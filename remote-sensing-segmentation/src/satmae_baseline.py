@@ -132,7 +132,7 @@ def parse_args() -> argparse.Namespace:
         "--pretrained-checkpoint",
         type=Path,
         default=Path(
-            "checkpoints/satmae/checkpoint_satmae_rgb.pth"
+            "checkpoints/satmae/checkpoint_ViT-L_pretrain_fmow_rgb.pth"
         ),
     )
 
