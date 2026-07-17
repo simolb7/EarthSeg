@@ -4,7 +4,7 @@ Fine-tune SatMAE++ on INRIA using ground-truth labels + SAM pseudo-labels.
 
 Requires:
 - src/satmae_baseline.py
-- datasets/inria_processed/metadata_semisupervised.csv
+- datasets/inria_processed/metadata_semisupervised_leakfree.csv
 - checkpoints/satmae/checkpoint_ViT-L_pretrain_fmow_rgb.pth
 
 Default training settings:
@@ -16,7 +16,7 @@ Default training settings:
 - pseudo-label loss weight: 0.5
 
 Run:
-    python src/satmae_pseudolabel_finetune.py
+    python src/satmae_pseudolabel_finetune_leakfree.py
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--metadata",
         type=Path,
-        default=Path("datasets/inria_processed/metadata_semisupervised.csv"),
+        default=Path("datasets/inria_processed/metadata_semisupervised_leakfree.csv"),
     )
     parser.add_argument(
         "--satmae-root",
@@ -87,7 +87,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("outputs/satmae_sam_pseudolabels"),
+        default=Path("outputs/satmae_sam_pseudolabels_leakfree"),
     )
 
     parser.add_argument("--image-size", type=int, default=224)
@@ -170,6 +170,7 @@ class InriaSemiSupervisedDataset(Dataset):
             "training_mask_path",
             "label_type",
             "patch_id",
+            "teacher_seen_ground_truth",
         }
 
         missing = required - set(frame.columns)
@@ -178,6 +179,62 @@ class InriaSemiSupervisedDataset(Dataset):
             raise ValueError(
                 "Missing metadata columns: "
                 + ", ".join(sorted(missing))
+            )
+
+        # ----------------------------------------------------
+        # Anti-leakage validation
+        # ----------------------------------------------------
+        # Every training sample labeled as "pseudo" must come
+        # from the 90% subset whose ground truth was NEVER used
+        # to train the SatMAE teacher that generated its prompt.
+        if split == "train":
+            pseudo_rows = frame[
+                (frame["split"] == "train")
+                & (frame["label_type"] == "pseudo")
+            ].copy()
+
+            if pseudo_rows.empty:
+                raise RuntimeError(
+                    "No pseudo-labeled samples found in the "
+                    "leak-free metadata."
+                )
+
+            def _parse_bool(value) -> bool:
+                if isinstance(value, bool):
+                    return value
+
+                value = str(value).strip().lower()
+
+                if value in {"true", "1", "yes", "y"}:
+                    return True
+
+                if value in {"false", "0", "no", "n", ""}:
+                    return False
+
+                raise ValueError(
+                    "Invalid teacher_seen_ground_truth value: "
+                    f"{value!r}"
+                )
+
+            teacher_seen = pseudo_rows[
+                "teacher_seen_ground_truth"
+            ].apply(_parse_bool)
+
+            if teacher_seen.any():
+                bad_ids = pseudo_rows.loc[
+                    teacher_seen,
+                    "patch_id",
+                ].astype(str).tolist()
+
+                raise RuntimeError(
+                    "DATA LEAKAGE DETECTED: some pseudo-labeled "
+                    "samples were seen by the teacher with ground truth. "
+                    f"Examples: {bad_ids[:10]}"
+                )
+
+            print(
+                "Leakage check: PASSED - all pseudo-labeled "
+                "samples have teacher_seen_ground_truth=False"
             )
 
         frame = frame[
@@ -1063,6 +1120,13 @@ def main() -> None:
         "Validation samples:",
         len(val_dataset),
     )
+    print(
+        "Metadata:",
+        args.metadata,
+    )
+    print(
+        "Leak-free experiment: 10% GT + 90% SAM pseudo-labels"
+    )
 
     train_loader = DataLoader(
         train_dataset,
@@ -1091,7 +1155,11 @@ def main() -> None:
     )
 
     print(
-        "Loading SatMAE++ from original pretrained checkpoint..."
+        "Loading SatMAE++ student from ORIGINAL pretrained checkpoint..."
+    )
+    print(
+        "The 10%-trained teacher checkpoint is NOT used to initialize "
+        "the student model."
     )
 
     model = build_model(
@@ -1418,7 +1486,7 @@ def main() -> None:
     )
 
     print(
-        "\nSatMAE + SAM pseudo-label fine-tuning completed."
+        "\nLeak-free SatMAE + SAM pseudo-label fine-tuning completed."
     )
 
     print(
