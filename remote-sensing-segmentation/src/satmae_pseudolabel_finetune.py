@@ -87,7 +87,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("outputs/satmae_sam_pseudolabels_leakfree"),
+        default=Path("outputs/satmae_sam_pseudolabels"),
     )
 
     parser.add_argument("--image-size", type=int, default=224)
