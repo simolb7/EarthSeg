@@ -3,3 +3,4 @@ remote-sensing-segmentation/external/
 remote-sensing-segmentation/datasets/
 remote-sensing-segmentation/runs/swin_unet_baseline
 remote-sensing-segmentation/outputs
+outputs
