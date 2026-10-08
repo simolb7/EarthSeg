@@ -7,6 +7,7 @@ Modes:
 
 Examples:
   python src/evaluate_models.py --model satmae --mode dataset
+  python src/evaluate_models.py --model satmae_wavelet_loss --mode dataset
   python src/evaluate_models.py --model satmae_wavelet --mode single --patch-id PATCH_ID
   python src/evaluate_models.py --model satmae --mode single --image path/to/image.png --mask path/to/mask.png
 """
@@ -35,7 +36,8 @@ IMAGENET_STD = (0.229, 0.224, 0.225)
 
 DEFAULT_CHECKPOINTS = {
     "satmae": Path("remote-sensing-segmentation/outputs/satmae_baseline/best_model.pth"),
-    "satmae_sam": Path("remote-sensing-segmentation/outputs/satmae_sam_pseudolabels_leakfree/best_model.pth"),
+    "satmae_sam": Path("remote-sensing-segmentation/outputs/satmae_sam_pseudolabels/best_model.pth"),
+    "satmae_wavelet_loss": Path("remote-sensing-segmentation/outputs/satmae_wavelet/best_model.pth"),
     "satmae_wavelet": Path("remote-sensing-segmentation/outputs/satmae_wavelet_decoder/best_model.pth"),
     "swin": Path("remote-sensing-segmentation/outputs/swinunet_baseline/best_model.pth"),
 }
@@ -43,7 +45,7 @@ DEFAULT_CHECKPOINTS = {
 
 def parse_args():
     p = argparse.ArgumentParser(description="Unified segmentation evaluator")
-    p.add_argument("--model", required=True, choices=["satmae", "satmae_sam", "satmae_wavelet", "swin"])
+    p.add_argument("--model", required=True, choices=["satmae", "satmae_sam", "satmae_wavelet_loss", "satmae_wavelet", "swin"])
     p.add_argument("--mode", default="dataset", choices=["dataset", "single"])
     p.add_argument("--checkpoint", type=Path, default=None)
     p.add_argument("--data-root", type=Path, default=Path("remote-sensing-segmentation/datasets/inria_processed"))
@@ -132,7 +134,7 @@ def load_model(args, device):
     if not checkpoint_path.is_file():
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
-    if args.model in ("satmae", "satmae_sam"):
+    if args.model in ("satmae", "satmae_sam", "satmae_wavelet_loss"):
         model = build_satmae(args, wavelet=False)
     elif args.model == "satmae_wavelet":
         model = build_satmae(args, wavelet=True)
