@@ -1,0 +1,21 @@
+{
+  "data_root": "datasets\\inria_processed",
+  "swinunet_root": "external\\Swin-Unet",
+  "cfg": "external\\Swin-Unet\\configs\\swin_tiny_patch4_window7_224_lite.yaml",
+  "pretrained_checkpoint": "external\\Swin-Unet\\pretrained_ckpt\\swin_tiny_patch4_window7_224.pth",
+  "output_dir": "outputs\\swinunet_baseline",
+  "image_size": 224,
+  "batch_size": 4,
+  "epochs": 20,
+  "num_workers": 4,
+  "learning_rate": 0.0001,
+  "weight_decay": 0.0001,
+  "bce_weight": 0.5,
+  "dice_weight": 0.5,
+  "pos_weight": 1.0,
+  "threshold": 0.5,
+  "patience": 5,
+  "seed": 42,
+  "no_amp": false,
+  "device": "cuda"
+}
